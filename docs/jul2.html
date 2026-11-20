@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Julklappsleken</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎁</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tiny5&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #0b0d2e;
+    --panel: #1b1f5e;
+    --panel-dark: #10133d;
+    --ink: #fcfcfc;
+    --muted: #a8b4ff;
+    --gold: #f8b800;
+    --red: #d82800;
+    --red-dark: #881400;
+    --green: #00a844;
+    --green-dark: #005820;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: var(--night);
+    color: var(--ink);
+    font-family: "Tiny5", ui-monospace, monospace;
+    -webkit-font-smoothing: none;
+    font-smooth: never;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  canvas#scene {
+    position: fixed; inset: 0 auto auto 0;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  .ui {
+    position: fixed; inset: 0;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: max(9vh, 48px) 16px 16px;
+    pointer-events: none;
+  }
+  .panel {
+    pointer-events: auto;
+    width: min(440px, 100%);
+    background: var(--panel);
+    border: 4px solid var(--ink);
+    box-shadow: 0 0 0 4px #000, 10px 10px 0 4px rgba(0,0,0,.45);
+    padding: 24px 20px 22px;
+    text-align: center;
+    line-height: 1.7;
+  }
+  .panel[hidden] { display: none; }
+  h1 {
+    margin: 0 0 6px; font-size: 30px; line-height: 1.4;
+    color: var(--gold);
+    text-shadow: 3px 3px 0 var(--red-dark);
+  }
+  .sub { margin: 0 0 22px; font-size: 20px; color: var(--muted); letter-spacing: 1px; }
+  label { display: block; font-size: 20px; margin-bottom: 12px; }
+  input {
+    width: 100%;
+    font: inherit; font-size: 40px; letter-spacing: 6px; text-align: center; text-transform: uppercase;
+    padding: 14px 8px;
+    color: var(--gold);
+    background: var(--panel-dark);
+    border: 4px solid var(--ink);
+    border-radius: 0;
+    outline: none;
+    caret-color: var(--gold);
+    user-select: text;
+  }
+  input:focus { border-color: var(--gold); }
+  input::placeholder { color: #3a4290; letter-spacing: 6px; }
+  .btn {
+    display: inline-block;
+    margin-top: 18px;
+    font: inherit; font-size: 20px; line-height: 1;
+    padding: 14px 18px;
+    color: var(--ink);
+    background: var(--red);
+    border: 4px solid var(--ink);
+    border-radius: 0;
+    box-shadow: inset -4px -4px 0 var(--red-dark), 4px 4px 0 #000;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn:active { transform: translate(4px, 4px); box-shadow: inset -4px -4px 0 var(--red-dark); }
+  .btn:focus-visible { outline: 4px dashed var(--gold); outline-offset: 4px; }
+  .btn.alt { background: var(--green); box-shadow: inset -4px -4px 0 var(--green-dark), 4px 4px 0 #000; }
+  .btn.alt:active { box-shadow: inset -4px -4px 0 var(--green-dark); }
+  .btn.ghost { background: transparent; box-shadow: 4px 4px 0 #000; }
+  .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .msg { min-height: 1.7em; margin: 14px 0 0; font-size: 20px; color: #ff8a7a; }
+  .blink { animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .shake { animation: shake .4s steps(2) 1; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-10px); } 40% { transform: translateX(10px); }
+    60% { transform: translateX(-6px); } 80% { transform: translateX(6px); }
+  }
+  .hello { font-size: 30px; color: var(--gold); margin: 0 0 14px; }
+  .to { font-size: 20px; margin: 0 0 14px; }
+  .name {
+    font-size: 40px; line-height: 1.3;
+    margin: 0 0 6px; min-height: 1.3em;
+    color: var(--ink);
+    text-shadow: 4px 4px 0 var(--red);
+    word-break: break-word;
+  }
+  .small { font-size: 20px; color: var(--muted); line-height: 1.4; margin: 14px 0 0; }
+  .hint {
+    position: fixed; left: 0; right: 0; top: 28vh;
+    text-align: center; font-size: 30px;
+    color: var(--gold); text-shadow: 3px 3px 0 #000;
+    pointer-events: none;
+  }
+  .hint[hidden] { display: none; }
+  .sound {
+    position: fixed; top: max(12px, env(safe-area-inset-top)); right: 12px;
+    font: inherit; font-size: 20px; padding: 6px 10px;
+    color: var(--ink); background: rgba(0,0,0,.35);
+    border: 3px solid var(--ink); border-radius: 0; cursor: pointer;
+  }
+  @media (min-width: 640px) {
+    h1 { font-size: 40px; }
+    .name { font-size: 60px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .blink, .shake { animation: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-hidden="true"></canvas>
+
+<button class="sound" id="sound" type="button" aria-pressed="true">♪ PÅ</button>
+
+<div class="ui">
+  <form class="panel" id="start" autocomplete="off">
+    <h1 id="title">JULKLAPPSLEKEN</h1>
+    <p class="sub" id="subtitle"></p>
+    <label for="code">SKRIV DIN HEMLIGA KOD</label>
+    <input id="code" name="code" maxlength="10" inputmode="text" autocapitalize="characters"
+           spellcheck="false" placeholder="•••••" required>
+    <p class="msg" id="msg" role="alert"></p>
+    <button class="btn" type="submit" id="go"><span class="blink">▶</span> START</button>
+  </form>
+
+  <section class="panel" id="result" hidden aria-live="polite">
+    <p class="hello" id="hello"></p>
+    <p class="to">DU SKA GE EN JULKLAPP TILL</p>
+    <p class="name" id="name"></p>
+    <div class="row">
+      <button class="btn alt" type="button" id="toggle">DÖLJ</button>
+      <button class="btn ghost" type="button" id="close">STÄNG</button>
+    </div>
+    <p class="small">PSST! BERÄTTA INTE FÖR NÅGON.<br>GOD JUL! 🎄</p>
+  </section>
+</div>
+
+<p class="hint" id="hint" hidden><span class="blink">TRYCK PÅ PAKETET!</span></p>
+
+<script>
+"use strict";
+const DATA = {"title":"Julklappsleken","subtitle":"Omgång 2","salt":"LsXh/uNuCI093U+a/ULUCg==","iterations":150000,"entries":[{"iv":"7/PlMb1G7SI4gT+5","ct":"m5S9QzO2mKd+vOGBitvjyJMlbs6zZrtxmRavQPE+DhWi4RnszFYpdVDk7QDXJJUekrzp"},{"iv":"/CI+Ns2h14t+XUGb","ct":"ICUgQ37A0nqbofeAZPVnjRCsTjcg+1968lc3EcvbsepTbT21ia0fSCdpOA8mOErm346f"},{"iv":"MeUy5R2QP2XYRZnA","ct":"Pveyj8+bie+RuMCZ90fBDZNEzJ2s+SH0fUec0FqTZnOdhGzchHbIsqEa64c8xv/xNSo7FQ=="},{"iv":"KfsMGab4o8kk62CS","ct":"4I4U5yaNRff+J0D2TUzsHWVGxchUw1OZiHf2gCqXP5TMRu8cM7DCdqqBz8H0jHV1S2YGzw=="},{"iv":"VUBQEjZ+FRAgHFh0","ct":"SLWPRa5Bl2F1P8wqQFfiA1Y+/1NvJZ4yvM+lfMo+LMhyuRNP5L+XP7lVAjjTxAYF5qsE"},{"iv":"r8Dy3/P3Dk925yNt","ct":"Hp3xqTgxALUSgqK/2Yu5pZTrXUFQNIA3Qs3d62hzuVGjztnuxVlwagLuiR7yxQJQbNKq"}]};
+
+// ---------------------------------------------------------------- crypto
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const normalize = (s) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+async function unlock(code) {
+  const base = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(normalize(code)), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: unb64(DATA.salt), iterations: DATA.iterations, hash: "SHA-256" },
+    base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  for (const e of DATA.entries) {
+    try {
+      const plain = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: unb64(e.iv) }, key, unb64(e.ct));
+      return JSON.parse(new TextDecoder().decode(plain));
+    } catch { /* not this one */ }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- sound
+// A tiny NES-like synth: pulse wave (melody), triangle (bass), narrow pulse (arpeggio)
+// and noise (drums/sleigh bells). The music is "Jingle Bells" (J. Pierpont, 1857 – public domain).
+let soundOn = true;
+try { soundOn = localStorage.getItem("jkl-sound") !== "off"; } catch {}
+let actx = null, master, musicBus, sfxBus, noiseBuf, waves = {};
+
+function audio() {
+  if (!soundOn) return null;
+  if (!actx) {
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+    master = actx.createGain(); master.gain.value = 0.55;
+    const comp = actx.createDynamicsCompressor();
+    master.connect(comp).connect(actx.destination);
+    musicBus = actx.createGain(); musicBus.connect(master);
+    sfxBus = actx.createGain(); sfxBus.connect(master);
+    noiseBuf = actx.createBuffer(1, actx.sampleRate, actx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    waves.p50 = pulse(0.5); waves.p25 = pulse(0.25); waves.p12 = pulse(0.125);
+  }
+  if (actx.state === "suspended" && !document.hidden) actx.resume();
+  return actx;
+}
+
+function pulse(duty) {
+  const n = 40, re = new Float32Array(n), im = new Float32Array(n);
+  for (let k = 1; k < n; k++) re[k] = (2 / (k * Math.PI)) * Math.sin(k * Math.PI * duty);
+  return actx.createPeriodicWave(re, im);
+}
+
+const hz = (midi) => 440 * 2 ** ((midi - 69) / 12);
+
+/** One note with an ADSR-ish envelope. */
+function voice({ wave = "p50", freq, t, dur, vol = 0.1, bus, slide = 0, vibrato = false, decay = true }) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  if (waves[wave]) o.setPeriodicWave(waves[wave]); else o.type = wave;
+  o.frequency.setValueAtTime(freq, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + dur);
+  if (vibrato && dur > 0.35) {
+    const lfo = actx.createOscillator(), lg = actx.createGain();
+    lfo.frequency.value = 5.5; lg.gain.setValueAtTime(0, t);
+    lg.gain.linearRampToValueAtTime(freq * 0.006, t + 0.25);
+    lfo.connect(lg).connect(o.frequency); lfo.start(t); lfo.stop(t + dur + 0.05);
+  }
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + 0.004);
+  if (decay) g.gain.linearRampToValueAtTime(vol * 0.6, t + Math.min(0.12, dur * 0.5));
+  g.gain.setValueAtTime(decay ? vol * 0.6 : vol, t + dur);
+  g.gain.linearRampToValueAtTime(0, t + dur + 0.03);
+  o.connect(g).connect(bus);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+
+function noise({ t, dur, vol, type = "highpass", f = 7000, q = 0.7, bus }) {
+  const s = actx.createBufferSource(), fl = actx.createBiquadFilter(), g = actx.createGain();
+  s.buffer = noiseBuf; fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+  s.connect(fl).connect(g).connect(bus);
+  s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+}
+
+const drum = {
+  kick(t, bus) { voice({ wave: "triangle", freq: 160, slide: -120, t, dur: 0.12, vol: 0.5, bus, decay: false }); },
+  snare(t, bus) { noise({ t, dur: 0.14, vol: 0.16, type: "bandpass", f: 2200, q: 0.6, bus }); },
+  bell(t, bus, v = 0.06) { noise({ t, dur: 0.06, vol: v, f: 8000, bus }); noise({ t: t + 0.025, dur: 0.05, vol: v * 0.6, f: 9500, bus }); },
+};
+
+// ---- notes: "NOTE:LENGTH" where length is in eighth notes, r = rest
+const N = { C: 0, "C#": 1, D: 2, "D#": 3, E: 4, F: 5, "F#": 6, G: 7, "G#": 8, A: 9, "A#": 10, B: 11 };
+const midi = (s) => { const m = s.match(/^([A-G]#?)(\d)$/); return 12 * (+m[2] + 1) + N[m[1]]; };
+const LEAD = `
+  D5:2 B5:2 A5:2 G5:2  D5:6 D5:1 D5:1  D5:2 B5:2 A5:2 G5:2  E5:8
+  E5:2 C6:2 B5:2 A5:2  F#5:8  D6:2 D6:2 C6:2 A5:2  B5:8
+  D5:2 B5:2 A5:2 G5:2  D5:8  D5:2 B5:2 A5:2 G5:2  E5:6 E5:2
+  E5:2 C6:2 B5:2 A5:2  D6:2 D6:2 D6:2 D6:2  E6:2 D6:2 C6:2 A5:2  G5:4 D6:4
+  B5:2 B5:2 B5:4  B5:2 B5:2 B5:4  B5:2 D6:2 G5:3 A5:1  B5:8
+  C6:2 C6:2 C6:3 C6:1  C6:2 B5:2 B5:2 B5:1 B5:1  B5:2 A5:2 A5:2 B5:2  A5:4 D6:4
+  B5:2 B5:2 B5:4  B5:2 B5:2 B5:4  B5:2 D6:2 G5:3 A5:1  B5:8
+  C6:2 C6:2 C6:3 C6:1  C6:2 B5:2 B5:2 B5:1 B5:1  D6:2 D6:2 C6:2 A5:2  G5:8`;
+// one chord per bar (32 bars: verse + chorus)
+const CHORDS = "G G G C Am D D7 G G G G C Am D D7 G G G G G C G A D G G G G C G D G".split(" ");
+const ROOT = { G: "G2", C: "C3", A: "A2", Am: "A2", D: "D3", D7: "D3" };
+const TRIAD = { G: [0, 4, 7], C: [0, 4, 7], A: [0, 4, 7], Am: [0, 3, 7], D: [0, 4, 7], D7: [0, 4, 10] };
+const BAR = 8, BPM = 138, EIGHTH = 60 / BPM / 2;
+
+function compileSong() {
+  const ev = [];
+  let t = 0;
+  for (const tok of LEAD.trim().split(/\s+/)) {
+    const [n, l] = tok.split(":"); const len = +l;
+    if (n !== "r") ev.push({ t, ch: "lead", midi: midi(n), len });
+    t += len;
+  }
+  const bars = t / BAR;
+  if (bars !== CHORDS.length) console.warn("Takter i melodin:", bars, "ackord:", CHORDS.length);
+  CHORDS.forEach((c, bar) => {
+    const s = bar * BAR, root = midi(ROOT[c]), chorus = bar >= 16;
+    // oom-pah bass: root, fifth, root, fifth
+    [0, 7, 0, 7].forEach((iv, i) => ev.push({ t: s + i * 2, ch: "bass", midi: root + iv + (i === 2 ? 12 : 0), len: 1.6 }));
+    // arpeggio in sixteenth notes
+    const arp = TRIAD[c].map((iv) => root + 24 + iv);
+    for (let i = 0; i < 16; i++) ev.push({ t: s + i / 2, ch: "arp", midi: arp[i % 3] + (i % 6 >= 3 ? 12 : 0), len: 0.45 });
+    // drums
+    ev.push({ t: s, ch: "kick" }, { t: s + 4, ch: "kick" });
+    ev.push({ t: s + 2, ch: "snare" }, { t: s + 6, ch: "snare" });
+    for (let i = 0; i < 8; i++) if (chorus || i % 2) ev.push({ t: s + i, ch: "bell", v: i % 2 ? 0.05 : 0.07 });
+  });
+  ev.sort((a, b) => a.t - b.t);
+  return { ev, length: t };
+}
+const SONG = compileSong();
+
+function playEvent(e, t) {
+  const bus = musicBus, d = e.len * EIGHTH;
+  switch (e.ch) {
+    case "lead": voice({ wave: "p25", freq: hz(e.midi), t, dur: d * 0.88, vol: 0.13, bus, vibrato: true }); break;
+    case "bass": voice({ wave: "triangle", freq: hz(e.midi), t, dur: d * 0.9, vol: 0.32, bus, decay: false }); break;
+    case "arp": voice({ wave: "p12", freq: hz(e.midi), t, dur: d, vol: 0.028, bus }); break;
+    case "kick": drum.kick(t, bus); break;
+    case "snare": drum.snare(t, bus); break;
+    case "bell": drum.bell(t, bus, e.v); break;
+  }
+}
+
+const music = { on: false, timer: 0, i: 0, start: 0 };
+function startMusic() {
+  const ac = audio();
+  if (!ac || music.on) return;
+  music.on = true; music.i = 0; music.start = ac.currentTime + 0.15;
+  musicBus.gain.setValueAtTime(1, ac.currentTime);
+  music.timer = setInterval(tickMusic, 25);
+  tickMusic();
+}
+function tickMusic() {
+  if (!actx || actx.state !== "running") return;
+  const horizon = actx.currentTime + 0.25;
+  for (;;) {
+    const e = SONG.ev[music.i];
+    const t = music.start + e.t * EIGHTH;
+    if (t > horizon) break;
+    if (t >= actx.currentTime - 0.02) playEvent(e, t);
+    if (++music.i >= SONG.ev.length) { music.i = 0; music.start += SONG.length * EIGHTH; }
+  }
+}
+/** Duck the music for a while (when an effect/fanfare plays). */
+function duck(seconds, level = 0.2) {
+  if (!actx || !music.on) return;
+  const t = actx.currentTime;
+  musicBus.gain.cancelScheduledValues(t);
+  musicBus.gain.setTargetAtTime(level, t, 0.05);
+  musicBus.gain.setTargetAtTime(1, t + seconds, 0.4);
+}
+document.addEventListener("visibilitychange", () => {
+  if (!actx) return;
+  if (document.hidden) actx.suspend(); else if (soundOn) actx.resume();
+});
+
+// ---- effects (tuned to G major so they fit the music)
+function fx(notes, { wave = "p50", vol = 0.12, step = 0.07, len = 0.08 } = {}) {
+  const ac = audio(); if (!ac) return;
+  const t0 = ac.currentTime + 0.01;
+  notes.forEach((n, i) => n && voice({ wave, freq: hz(midi(n)), t: t0 + i * step, dur: len, vol, bus: sfxBus }));
+}
+const LETTERS = ["G5", "A5", "B5", "D6", "E6", "G6", "A6", "B6", "D7"];
+const sfx = {
+  start: () => fx(["G5", "B5", "D6", "G6"], { step: 0.06, len: 0.07 }),
+  wrong: () => { fx(["C#5", "C5"], { wave: "p25", step: 0.16, len: 0.15, vol: 0.14 }); duck(0.5, 0.4); },
+  drop() {
+    const ac = audio(); if (!ac) return;
+    voice({ wave: "p12", freq: 1800, slide: -1500, t: ac.currentTime, dur: 0.9, vol: 0.06, bus: sfxBus, decay: false });
+  },
+  land() {
+    const ac = audio(); if (!ac) return;
+    drum.kick(ac.currentTime, sfxBus);
+    noise({ t: ac.currentTime, dur: 0.2, vol: 0.12, type: "lowpass", f: 900, bus: sfxBus });
+  },
+  pop() {
+    const ac = audio(); if (!ac) return;
+    noise({ t: ac.currentTime, dur: 0.3, vol: 0.2, type: "bandpass", f: 3000, q: 0.5, bus: sfxBus });
+    voice({ wave: "p50", freq: 300, slide: 1200, t: ac.currentTime, dur: 0.15, vol: 0.1, bus: sfxBus });
+  },
+  letter: (i) => fx([LETTERS[i % LETTERS.length]], { wave: "p25", len: 0.06, vol: 0.07 }),
+  fanfare() {
+    const ac = audio(); if (!ac) return;
+    duck(2.4, 0.15);
+    const t0 = ac.currentTime + 0.05, s = 0.11;
+    // a small original victory fanfare
+    const lead = [["G5", 0, 1], ["B5", 1, 1], ["D6", 2, 1], ["G6", 3, 3], ["F#6", 6, 1], ["G6", 7, 1], ["A6", 8, 1], ["B6", 9, 8]];
+    const harm = [["D5", 3, 3], ["D5", 6, 3], ["G5", 9, 8]];
+    for (const [n, at, l] of lead) voice({ wave: "p25", freq: hz(midi(n)), t: t0 + at * s, dur: l * s * 0.9, vol: 0.14, bus: sfxBus, vibrato: true });
+    for (const [n, at, l] of harm) voice({ wave: "p50", freq: hz(midi(n)), t: t0 + at * s, dur: l * s * 0.9, vol: 0.06, bus: sfxBus });
+    voice({ wave: "triangle", freq: hz(midi("G3")), t: t0 + 3 * s, dur: 14 * s, vol: 0.3, bus: sfxBus, decay: false });
+    for (let i = 0; i < 16; i++) drum.bell(t0 + i * s, sfxBus, 0.07);
+    drum.kick(t0 + 3 * s, sfxBus); drum.kick(t0 + 9 * s, sfxBus);
+  },
+};
+
+// Start the music on the first tap/key press (browsers require a user gesture).
+// NOTE: on mobile, pointerdown/touchstart do NOT grant permission to play audio –
+// only pointerup/touchend/click do. So we listen to all of them and keep
+// trying until the audio context is actually running.
+function firstGesture() {
+  if (!soundOn) return;
+  const ac = audio();
+  if (!ac) return;
+  startMusic();
+  if (ac.state !== "running") ac.resume().then(tickMusic).catch(() => {});
+}
+for (const type of ["pointerdown", "pointerup", "touchend", "click", "keydown"]) {
+  addEventListener(type, firstGesture, { capture: true, passive: true });
+}
+
+// ---------------------------------------------------------------- scene
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d");
+let PX = 4, W = 0, H = 0, groundY = 0;
+let backdrop = null; // pre-rendered background
+let stars = [], flakes = [];
+
+const PAL = {
+  r: "#d82800", R: "#881400", w: "#fcfcfc", s: "#fcbcb0", y: "#f8b800", Y: "#ac7c00",
+  b: "#a0522d", B: "#5c3010", n: "#ff2020", g: "#00a844", G: "#005820", k: "#000000",
+  c: "#7c4c1c",
+};
+
+const SLEIGH = [
+  "....w.rrr...............",
+  ".....rrrrr..............",
+  "..cc.wwwwww.............",
+  ".cccc.sssks.............",
+  ".cccc.wwwwww.........yy.",
+  ".cccrrrwwwwrr.........y.",
+  "..RRrrrrrwwrrr........y.",
+  "..RRRRRRRRRRRRRRRRRRRRy.",
+  "..RRyyyyyyyyyyyyyyyyRR..",
+  "..RRRRRRRRRRRRRRRRRRRR..",
+  "...RRRRRRRRRRRRRRRRRR...",
+  ".....y............y.....",
+  "y....y............y....y",
+  ".yyyyyyyyyyyyyyyyyyyyyy.",
+];
+const DEER = [
+  [
+    ".........B...B.",
+    ".........BB.BB.",
+    "..........BBB..",
+    "..........bbbb.",
+    "..........bkbbn",
+    "...........bbb.",
+    "b.bbbbbbbbbbb..",
+    ".bbbbbbbbbbbb..",
+    "..bbwwwwwwbb...",
+    "..b.b....b.b...",
+    ".b...b..b...b..",
+  ],
+  [
+    ".........B...B.",
+    ".........BB.BB.",
+    "..........BBB..",
+    "..........bbbb.",
+    "..........bkbbn",
+    "...........bbb.",
+    "b.bbbbbbbbbbb..",
+    ".bbbbbbbbbbbb..",
+    "..bbwwwwwwbb...",
+    "...bb.....bb...",
+    "...bb.....bb...",
+  ],
+];
+const LID = [
+  "..gg......gg..",
+  ".g..g....g..g.",
+  ".g...g..g...g.",
+  "..gggggggggg..",
+  "rrrrrrggrrrrrr",
+  "RRRRRRggRRRRRR",
+];
+const BOX = [
+  ".rrrrrggrrrrr.",
+  ".rrrrrggrrrrr.",
+  ".rrrrrggrrrrr.",
+  ".gggggggggggg.",
+  ".rrrrrggrrrrr.",
+  ".rrrrrggrrrrr.",
+  ".rrrrrggrrrrr.",
+  ".RRRRRggRRRRR.",
+];
+
+function sprite(rows, x, y, scale = 1) {
+  x = Math.round(x); y = Math.round(y);
+  for (let j = 0; j < rows.length; j++) {
+    const row = rows[j];
+    for (let i = 0; i < row.length; i++) {
+      const c = PAL[row[i]];
+      if (!c) continue;
+      ctx.fillStyle = c;
+      ctx.fillRect(x + i * scale, y + j * scale, scale, scale);
+    }
+  }
+}
+
+// simple seeded random so the background looks the same after a resize
+function rng(seed) { return () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+function resize() {
+  PX = innerWidth < 640 ? 3 : 4;
+  W = Math.ceil(innerWidth / PX);
+  H = Math.ceil(innerHeight / PX);
+  canvas.width = W; canvas.height = H;
+  canvas.style.width = W * PX + "px";
+  canvas.style.height = H * PX + "px";
+  groundY = Math.round(H * 0.8);
+  buildBackdrop();
+  const r = rng(7);
+  stars = Array.from({ length: Math.round(W * H / 260) }, () => ({
+    x: Math.floor(r() * W), y: Math.floor(r() * groundY * 0.75), p: r() * 6.28, big: r() < 0.08,
+  }));
+  flakes = Array.from({ length: Math.round(W * H / 180) }, () => newFlake(true));
+  if (gift) gift.restY = groundY - BOX.length * 2 - LID.length * 2 + 4;
+}
+
+function newFlake(anywhere) {
+  return { x: Math.random() * W, y: anywhere ? Math.random() * H : -2, v: 4 + Math.random() * 10, p: Math.random() * 6.28, big: Math.random() < 0.15 };
+}
+
+function buildBackdrop() {
+  const b = document.createElement("canvas");
+  b.width = W; b.height = H;
+  const c = b.getContext("2d");
+  const r = rng(42);
+  // sky in bands (8-bit "gradient")
+  const bands = ["#05061c", "#080a28", "#0b0e34", "#0f1340", "#14194d", "#1a205a"];
+  const bh = Math.ceil(groundY / bands.length);
+  bands.forEach((col, i) => { c.fillStyle = col; c.fillRect(0, i * bh, W, bh + 1); });
+  // dither between the bands
+  for (let i = 1; i < bands.length; i++) {
+    c.fillStyle = bands[i];
+    for (let x = 0; x < W; x += 2) c.fillRect(x + (i % 2), i * bh - 1, 1, 1);
+  }
+  // moon
+  const mx = Math.round(W * 0.82), my = Math.round(H * 0.14), mr = Math.max(6, Math.round(Math.min(W, H) * 0.05));
+  for (let y = -mr; y <= mr; y++) for (let x = -mr; x <= mr; x++) {
+    const d = x * x + y * y;
+    if (d <= mr * mr) {
+      c.fillStyle = d > (mr - 1) * (mr - 1) ? "#d8d0a0" : "#fff8d0";
+      c.fillRect(mx + x, my + y, 1, 1);
+    }
+  }
+  c.fillStyle = "#e8dfb0";
+  c.fillRect(mx - 2, my - 1, 2, 2); c.fillRect(mx + 2, my + 3, 3, 2); c.fillRect(mx - 3, my + 4, 1, 1);
+  // distant hills
+  c.fillStyle = "#2a3478";
+  for (let x = 0; x < W; x++) {
+    const h = Math.sin(x / 23) * 5 + Math.sin(x / 9 + 1) * 2 + 14;
+    c.fillRect(x, groundY - h - 6, 1, h + 6);
+  }
+  c.fillStyle = "#5a68b8";
+  for (let x = 0; x < W; x++) {
+    const h = Math.sin(x / 31 + 2) * 4 + Math.sin(x / 13) * 2 + 7;
+    c.fillRect(x, groundY - h, 1, h);
+  }
+  // trees and houses
+  const things = [];
+  for (let x = -4; x < W; x += 10 + Math.floor(r() * 22)) things.push(x);
+  const clear = (x) => Math.abs(x + 9 - W / 2) < 30; // room for the gift
+  for (const x of things) {
+    if (clear(x)) continue;
+    if (r() < 0.35) house(c, x, groundY, r); else tree(c, x, groundY, 8 + Math.floor(r() * 10));
+  }
+  // the ground
+  c.fillStyle = "#dce8ff"; c.fillRect(0, groundY, W, H - groundY);
+  c.fillStyle = "#b4c4ec";
+  for (let y = groundY + 2; y < H; y += 3) for (let x = (y % 2) * 2; x < W; x += 5) c.fillRect(x, y, 1, 1);
+  c.fillStyle = "#fcfcfc"; c.fillRect(0, groundY, W, 1);
+  backdrop = b;
+}
+
+function tree(c, x, base, h) {
+  c.fillStyle = "#5c3010"; c.fillRect(x + Math.floor(h / 2) - 1, base - 2, 2, 2);
+  for (let j = 0; j < h; j++) {
+    const w = Math.max(1, Math.round((j / h) * h * 0.9));
+    const left = x + Math.floor(h / 2) - Math.floor(w / 2);
+    c.fillStyle = j % 3 === 0 ? "#e8f0ff" : (j % 3 === 1 ? "#0b5a32" : "#0a4a2a");
+    c.fillRect(left, base - 2 - h + j, w, 1);
+  }
+}
+
+function house(c, x, base, r) {
+  const w = 14 + Math.floor(r() * 6), h = 9 + Math.floor(r() * 4);
+  const colors = ["#8c2010", "#7a3c18", "#5a2a6a", "#1c4c6c"];
+  c.fillStyle = colors[Math.floor(r() * colors.length)];
+  c.fillRect(x, base - h, w, h);
+  // roof with snow
+  for (let j = 0; j < Math.ceil(w / 2) + 1; j++) {
+    c.fillStyle = j < 2 ? "#fcfcfc" : "#3a1a10";
+    const y = base - h - Math.ceil(w / 2) - 1 + j;
+    c.fillRect(x + Math.ceil(w / 2) - j - 1, y, j * 2 + 2 > w + 2 ? w + 2 : j * 2 + 2, 1);
+  }
+  c.fillStyle = "#fcfcfc"; c.fillRect(x - 1, base - h - 1, w + 2, 1);
+  // chimney
+  c.fillStyle = "#4a2010"; c.fillRect(x + w - 5, base - h - Math.ceil(w / 2) + 1, 2, 4);
+  // windows
+  c.fillStyle = "#ffd860";
+  c.fillRect(x + 3, base - h + 3, 3, 3);
+  if (w > 15) c.fillRect(x + w - 6, base - h + 3, 3, 3);
+  c.fillStyle = "#3a1a10"; c.fillRect(x + Math.floor(w / 2) - 1, base - 5, 3, 5);
+}
+
+// ---------------------------------------------------------------- actors
+let santa = null;     // { x, y, v, t, drop }
+let gift = null;      // { x, y, vy, restY, state, lidY, lidVy, wob }
+let particles = [];
+let nextFlight = performance.now() + 2500;
+let onDelivered = null;
+
+const SANTA_W = 24 + 4 + 15 + 3 + 15;
+
+function launchSanta(deliver) {
+  const y = deliver ? Math.round(H * 0.18) : Math.round(H * (0.08 + Math.random() * 0.25));
+  santa = { x: -SANTA_W - 4, y, v: deliver ? 110 : 28 + Math.random() * 14, t: 0, drop: deliver };
+}
+
+function drawSanta(dt) {
+  santa.t += dt;
+  santa.x += santa.v * dt;
+  const frame = Math.floor(santa.t * 6) % 2;
+  const bob = (o) => Math.round(Math.sin(santa.t * 5 + o) * 1.5);
+  const sx = santa.x, sy = santa.y + bob(0);
+  const d1x = sx + 28, d1y = santa.y + 1 + bob(1);
+  const d2x = d1x + 18, d2y = santa.y - 1 + bob(2);
+  // stardust behind the sleigh
+  if (Math.random() < 0.8) particles.push({ x: sx + 1, y: sy + 12 + Math.random() * 2, vx: -6 - Math.random() * 6, vy: Math.random() * 6 - 2, g: 0, life: 0.8 + Math.random() * 0.6, max: 1.4, c: Math.random() < 0.5 ? "#f8b800" : "#fcfcfc" });
+  // reins
+  ctx.fillStyle = "#f8b800";
+  line(sx + 12, sy + 6, d1x + 8, d1y + 7);
+  line(d1x + 12, d1y + 6, d2x + 8, d2y + 7);
+  sprite(SLEIGH, sx, sy);
+  sprite(DEER[frame], d1x, d1y);
+  sprite(DEER[1 - frame], d2x, d2y);
+  if (santa.drop && !gift && sx + 10 >= W / 2 - 7) dropGift(sx + 6, sy + 6);
+  if (sx > W + 4) santa = null;
+}
+
+function line(x0, y0, x1, y1) {
+  x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+  const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+  for (let i = 0; i <= n; i++) ctx.fillRect(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), 1, 1);
+}
+
+function dropGift(x, y) {
+  sfx.drop();
+  gift = {
+    x: Math.round(W / 2 - 14), y, vy: 0,
+    restY: groundY - BOX.length * 2 - LID.length * 2 + 4,
+    state: "falling", lidY: 0, lidVy: 0, wob: 0,
+  };
+}
+
+function updateGift(dt) {
+  const g = gift;
+  if (g.state === "falling") {
+    g.vy += 160 * dt; g.y += g.vy * dt;
+    if (g.y >= g.restY) {
+      g.y = g.restY;
+      if (g.vy > 40) { g.vy = -g.vy * 0.35; sfx.land(); burst(g.x + 14, groundY, 10, ["#fcfcfc", "#dce8ff"], 30); }
+      else { g.vy = 0; g.state = "waiting"; onDelivered && onDelivered(); }
+    }
+  } else if (g.state === "open") {
+    g.lidVy += 120 * dt; g.lidY += g.lidVy * dt;
+  }
+  g.wob += dt;
+  const wobble = g.state === "waiting" ? Math.round(Math.sin(g.wob * 8) * (Math.sin(g.wob * 1.3) > 0.4 ? 1 : 0)) : 0;
+  const lidX = g.x + wobble, lidY = g.y + g.lidY;
+  sprite(BOX, g.x, g.y + LID.length * 2, 2);
+  if (lidY > -40) sprite(LID, lidX, lidY, 2);
+}
+
+function burst(x, y, n, colors, speed = 80) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = speed * (0.3 + Math.random());
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - speed * 0.6, g: 120, life: 1 + Math.random() * 1.5, max: 2.5, c: colors[i % colors.length] });
+  }
+}
+
+function openGift() {
+  if (!gift || gift.state !== "waiting") return;
+  gift.state = "open"; gift.lidVy = -110;
+  sfx.pop();
+  burst(gift.x + 14, gift.y + 12, 160, ["#f8b800", "#d82800", "#00a844", "#fcfcfc", "#58d8fc", "#fc74b4"], 110);
+  setTimeout(() => sfx.fanfare(), 150);
+}
+
+// ---------------------------------------------------------------- loop
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  ctx.drawImage(backdrop, 0, 0);
+  const t = now / 1000;
+  for (const s of stars) {
+    const on = Math.sin(t * 2 + s.p) > -0.6;
+    if (!on) continue;
+    ctx.fillStyle = Math.sin(t * 3 + s.p) > 0.7 ? "#ffffff" : "#8890d0";
+    ctx.fillRect(s.x, s.y, 1, 1);
+    if (s.big && Math.sin(t * 1.5 + s.p) > 0.3) {
+      ctx.fillStyle = "#c0c8ff";
+      ctx.fillRect(s.x - 1, s.y, 1, 1); ctx.fillRect(s.x + 1, s.y, 1, 1);
+      ctx.fillRect(s.x, s.y - 1, 1, 1); ctx.fillRect(s.x, s.y + 1, 1, 1);
+    }
+  }
+  if (!santa && !reduceMotion && now > nextFlight && state === "start") {
+    launchSanta(false);
+    nextFlight = now + 9000 + Math.random() * 9000;
+  }
+  if (santa) drawSanta(dt);
+  if (gift) updateGift(dt);
+  // particles
+  particles = particles.filter((p) => (p.life -= dt) > 0);
+  for (const p of particles) {
+    p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.y > groundY + 2 && p.g) { p.y = groundY + 2; p.vx *= 0.5; p.vy = 0; }
+    if (p.life < p.max * 0.25 && Math.floor(p.life * 20) % 2) continue;
+    ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+  }
+  // snow
+  ctx.fillStyle = "#fcfcfc";
+  for (const f of flakes) {
+    if (!reduceMotion) { f.y += f.v * dt; f.p += dt; }
+    const x = Math.round(f.x + Math.sin(f.p * 1.5) * 2);
+    if (f.y > H) Object.assign(f, newFlake(false));
+    ctx.fillRect(x, Math.round(f.y), f.big ? 2 : 1, f.big ? 2 : 1);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---------------------------------------------------------------- UI
+const $ = (id) => document.getElementById(id);
+const form = $("start"), input = $("code"), msg = $("msg"), result = $("result"), hint = $("hint");
+let state = "start";
+let revealed = null, nameHidden = false, typing = 0;
+
+if (DATA) {
+  $("subtitle").textContent = DATA.subtitle.toUpperCase();
+  $("title").textContent = DATA.title.toUpperCase();
+  document.title = `${DATA.title} – ${DATA.subtitle}`;
+} else {
+  msg.textContent = "INGEN LOTTNING ÄNNU. KÖR deno task draw.";
+}
+
+const fromHash = normalize(decodeURIComponent(location.hash.slice(1)));
+if (fromHash) input.value = fromHash;
+
+input.addEventListener("input", () => { msg.textContent = ""; });
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (state !== "start" || !DATA) return;
+  if (!window.crypto || !crypto.subtle) { msg.textContent = "ÖPPNA SIDAN VIA HTTPS."; return; }
+  const code = normalize(input.value);
+  if (!code) return;
+  state = "checking";
+  $("go").disabled = true;
+  const found = await unlock(code).catch(() => null);
+  $("go").disabled = false;
+  if (!found) {
+    state = "start";
+    sfx.wrong();
+    msg.textContent = "FEL KOD! FÖRSÖK IGEN.";
+    form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+    input.select();
+    return;
+  }
+  sfx.start();
+  revealed = found;
+  input.blur();
+  form.hidden = true;
+  if (reduceMotion) { showResult(); return; }
+  state = "deliver";
+  particles = []; gift = null;
+  onDelivered = () => { state = "gift"; hint.hidden = false; };
+  launchSanta(true);
+});
+
+function onGiftTap(e) {
+  if (state !== "gift") return;
+  if (e.target.closest && e.target.closest("button")) return;
+  if (e.type === "keydown" && !["Enter", " "].includes(e.key)) return;
+  e.preventDefault();
+  state = "opening";
+  hint.hidden = true;
+  openGift();
+  setTimeout(showResult, 900);
+}
+addEventListener("pointerdown", onGiftTap);
+addEventListener("keydown", onGiftTap);
+
+function showResult() {
+  state = "result";
+  result.hidden = false;
+  $("hello").textContent = `HEJ ${revealed.giver.toUpperCase()}!`;
+  nameHidden = false;
+  $("toggle").textContent = "DÖLJ";
+  typeName(revealed.receiver.toUpperCase());
+  $("close").focus({ preventScroll: true });
+}
+
+function typeName(text) {
+  const el = $("name"); const id = ++typing;
+  el.textContent = "";
+  if (reduceMotion) { el.textContent = text; return; }
+  [...text].forEach((ch, i) => setTimeout(() => {
+    if (id !== typing || nameHidden) return;
+    el.textContent += ch; if (ch !== " ") sfx.letter(i);
+  }, 350 + i * 120));
+}
+
+$("toggle").addEventListener("click", () => {
+  nameHidden = !nameHidden;
+  typing++;
+  $("name").textContent = nameHidden ? "?".repeat(revealed.receiver.length) : revealed.receiver.toUpperCase();
+  $("toggle").textContent = nameHidden ? "VISA" : "DÖLJ";
+});
+
+$("close").addEventListener("click", () => {
+  typing++;
+  result.hidden = true; form.hidden = false;
+  gift = null; revealed = null;
+  input.value = ""; msg.textContent = "";
+  history.replaceState(null, "", location.pathname);
+  state = "start";
+  nextFlight = performance.now() + 3000;
+});
+
+const soundBtn = $("sound");
+function paintSound() { soundBtn.textContent = soundOn ? "♪ PÅ" : "♪ AV"; soundBtn.setAttribute("aria-pressed", String(soundOn)); }
+soundBtn.addEventListener("click", () => {
+  soundOn = !soundOn; paintSound();
+  try { localStorage.setItem("jkl-sound", soundOn ? "on" : "off"); } catch {}
+  if (soundOn) { audio(); startMusic(); } else if (actx) actx.suspend();
+});
+paintSound();
+
+addEventListener("resize", resize);
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

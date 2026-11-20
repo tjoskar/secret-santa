@@ -1,0 +1,6 @@
+# Codes for the text messages – never commit (codes + page = the whole draw)
+sms/
+utskick/
+
+# Real names – local only. See config.example.ts
+config.ts

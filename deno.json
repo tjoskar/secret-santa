@@ -1,0 +1,12 @@
+{
+  "tasks": {
+    "draw": "deno run --allow-read --allow-write draw.ts",
+    "rebuild": "deno run --allow-read --allow-write rebuild.ts",
+    "stats": "deno run stats.ts",
+    "test": "deno test",
+    "serve": "deno run --allow-net --allow-read jsr:@std/http@1/file-server docs"
+  },
+  "fmt": {
+    "lineWidth": 100
+  }
+}
